@@ -22,6 +22,7 @@ GeoIP datasets for popular CDNs. Ready to use for V2Ray/Xray.
 | F5           | geoip-cdn:f5            |
 | Fastly       | geoip-cdn:fastly        |
 | Gcore        | geoip-cdn:gcore         |
+| Hetzner      | geoip-cdn:hetzner       |
 | Imperva      | geoip-cdn:imperva       |
 | Leaseweb     | geoip-cdn:leaseweb      |
 | Limelight    | geoip-cdn:limelight     |
