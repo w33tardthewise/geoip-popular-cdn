@@ -15,6 +15,7 @@ GeoIP datasets for popular CDNs. Ready to use for V2Ray/Xray.
 | CDNetworks   | geoip-cdn:cdnetworks    |
 | Cloudflare   | geoip-cdn:cloudflare    |
 | CloudFront   | geoip-cdn:cloudfront    |
+| Datacamp Limited | geoip-cdn:datacamplimited |
 | DDoS-Guard   | geoip-cdn:ddos-guard    |
 | Edgecast     | geoip-cdn:edgecast      |
 | EdgeNext     | geoip-cdn:edgenext      |
