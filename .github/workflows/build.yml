@@ -71,6 +71,11 @@ jobs:
                   name:"amazonaws",
                   uri:"https://ip-ranges.amazonaws.com/ip-ranges.json",
                   jsonPath:["prefixes.#.ip_prefix","ipv6_prefixes.#.ipv6_prefix"]
+                }},
+                {type:"maxmindGeoLite2ASNCSV", action:"add", args:{
+                  ipv4:"https://github.com/Loyalsoldier/geoip/raw/release/GeoLite2-ASN-Blocks-IPv4.csv",
+                  ipv6:"https://github.com/Loyalsoldier/geoip/raw/release/GeoLite2-ASN-Blocks-IPv6.csv",
+                  wantedList: { "hetzner": ["AS24940"] }
                 }}
               ]
             ),
@@ -78,7 +83,7 @@ jobs:
               {type:"v2rayGeoIPDat", action:"output", args:{
                 outputDir:"./geoip/output",
                 outputName:"geoip-cdn.dat",
-                wantedList:([.[].provider|ascii_downcase] + ["amazonaws"])
+                wantedList:([.[].provider|ascii_downcase] + ["amazonaws","hetzner"])
               }}
             ]
           }' ./cdn-ips/config.json > ./geoip/config.json
