@@ -1,0 +1,131 @@
+name: Build geoip
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3,9,15,21 * * *"
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - ".gitignore"
+      - "LICENSE*"
+      - "*.md"
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout codebase
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # geoip repo
+      - name: Checkout runetfreedom/geoip
+        uses: actions/checkout@v4
+        with:
+          repository: runetfreedom/geoip
+          path: geoip
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./geoip/go.mod
+
+      - name: Set variables
+        run: |
+          echo "TAG_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+          echo "RELEASE_NAME=$(date +%Y%m%d%H%M)" >> $GITHUB_ENV
+        shell: bash
+
+      # Install cdn-ranges CLI
+      - name: Install cdn-ranges
+        run: |
+          go install -v github.com/taythebot/cdn-ranges/cmd/cdn-ranges@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+      - name: Prepare cdn-ips/config.json
+        run: |
+          mkdir -p ./cdn-ips
+          cdn-ranges -v4 -format json -output ranges.json
+          jq -s 'group_by(.provider) | map({
+            provider: .[0].provider,
+            cidrs: map(select(.type=="ipv4") | .range),
+            asn: []
+          })' ranges.json > ./cdn-ips/config.json
+
+      - name: Generate geoip/config.json
+        run: |
+          mkdir -p ./geoip
+          jq '{
+            input: (
+              [ .[] | select(.cidrs != null and (.cidrs | length > 0))
+                | {type:"text", action:"add", args:{name:(.provider|ascii_downcase), ipOrCIDR:.cidrs}}
+              ] +
+              [ .[] | select(.asn != null and (.asn | length > 0))
+                | {type:"asn", action:"add", args:{name:(.provider|ascii_downcase), asn:.asn}}
+              ] +
+              [
+                {type:"json", action:"add", args:{
+                  name:"amazonaws",
+                  uri:"https://ip-ranges.amazonaws.com/ip-ranges.json",
+                  jsonPath:["prefixes.#.ip_prefix","ipv6_prefixes.#.ipv6_prefix"]
+                }}
+              ]
+            ),
+            output: [
+              {type:"v2rayGeoIPDat", action:"output", args:{
+                outputDir:"./geoip/output",
+                outputName:"geoip-cdn.dat",
+                wantedList:([.[].provider|ascii_downcase] + ["amazonaws"])
+              }}
+            ]
+          }' ./cdn-ips/config.json > ./geoip/config.json
+
+      - name: Debug geoip/config.json
+        run: cat ./geoip/config.json | jq .
+
+      # Build geoip files
+      - name: Build geoip files
+        run: |
+          go build -C geoip ./
+          mkdir -p ./output/geoip
+          ./geoip/geoip convert -c ./geoip/config.json
+          mv ./geoip/output/* ./output/geoip/ || true
+          
+      # Generate sha256 checksums
+      - name: Generate sha256 checksum
+        run: |
+          cd ./output || exit 1
+          for file in $(find . -type f ! -name "*.sha256sum"); do
+            sha256sum "${file}" > "${file}.sha256sum"
+          done
+
+      # Git push assets to "release" branch
+      - name: Git push assets to "release" branch
+        run: |
+          cd output || exit 1
+          git init
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b release
+          git add -A
+          git commit -m "${{ env.RELEASE_NAME }}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f -u origin release
+
+      # Cleanup before release
+      - name: Remove unnecessary files
+        run: |
+          rm -rf ./output/geoip/*.{gz,zip}
+          rm -rf ./output/geoip/GeoLite2-*.csv
+
+      - name: Upload files to GitHub release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file_glob: true
+          file: ./output/**/*
+          release_name: ${{ env.RELEASE_NAME }}
+          tag: ${{ env.TAG_NAME }}
