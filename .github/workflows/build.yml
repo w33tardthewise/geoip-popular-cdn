@@ -75,7 +75,7 @@ jobs:
                 {type:"maxmindGeoLite2ASNCSV", action:"add", args:{
                   ipv4:"https://github.com/Loyalsoldier/geoip/raw/release/GeoLite2-ASN-Blocks-IPv4.csv",
                   ipv6:"https://github.com/Loyalsoldier/geoip/raw/release/GeoLite2-ASN-Blocks-IPv6.csv",
-                  wantedList: { "hetzner": ["AS24940"], "datacamp-limited": ["AS212238", "AS60068"], "roblox": ["AS22697", "AS1299", "AS20940", "AS15169"]}
+                  wantedList: { "hetzner": ["AS24940"], "datacamp-limited": ["AS212238", "AS60068"]}
                 }}
               ]
             ),
@@ -83,7 +83,7 @@ jobs:
               {type:"v2rayGeoIPDat", action:"output", args:{
                 outputDir:"./geoip/output",
                 outputName:"geoip-cdn.dat",
-                wantedList:([.[].provider|ascii_downcase] + ["amazonaws","hetzner","datacamp-limited","roblox"])
+                wantedList:([.[].provider|ascii_downcase] + ["amazonaws","hetzner","datacamp-limited"])
               }}
             ]
           }' ./cdn-ips/config.json > ./geoip/config.json
